@@ -1,59 +1,68 @@
-from os import listdir, makedirs
-from os.path import splitext, join
-from sys import argv
+from sys import argv, exit
+from pathlib import Path
 from PIL import Image
 
 
-def collect_all_images():
+def resize_images(target_width=500, target_height=500, output_format=".png"):
 
-    if len(argv) < 2:
-        print("You need to have a specify a folder with images in.\nThe right command is 'python main.py path/to/folder/with/images/in' (without quotes).")
+    if len(argv) != 2:
+        print("\nYou need to have a specify a folder with images in.\nThe right command is 'python main.py folder/containing/images/' (without quotes).\n")
+        exit(1)
 
     elif len(argv) == 2:
-        images_folder = argv[1]
+        images_directory = argv[1]
 
-        all_images = []
-        valid_file_formats = [".jpg", ".jpeg", ".gif", ".png", ".tga", ".tiff", ".webp", ]
-        for image in listdir(images_folder):
-            file_format = splitext(image)[1]
-            if file_format.lower() not in valid_file_formats:
-                continue
-            all_images.append(join(images_folder, image))
+    counter = 0
+    img_files = []
 
-        return all_images
+    p = Path(images_directory)
 
+    valid_file_formats = [".jpg", ".jpeg", ".gif",
+                          ".png", ".tga", ".tiff", ".webp", ]
 
-def resize_images(all_images):
+    for img_file in p.glob('*.*'):
+        if img_file.is_file() and img_file.suffix in valid_file_formats:
+            img_files.append(img_file.name)
 
-    if all_images:
-        print("\nResizing all the images...\n")
+    if len(img_files) == 0:
+        print("\nNo images found\n")
+        exit(1)
 
-    for image in all_images:
-        image_name = splitext(image)[0].split("/")[-1]
-        image_file = Image.open(image)
-        longest_dimension = max(image_file.size)
+    print("Resizing images...")
+    for img_file in img_files:
+        counter += 1
+        print(str(counter) + " / " + str(len(img_files)))
 
-        # If longest dimension is less than 500px
+        # Opening image file
+        img = Image.open(images_directory + img_file)
+
+        # Determining longest side of file
+        longest_dimension = max(img.size)
+
+        # If longest dimension is less than target width (default 500px)
         # Make a square of largest side
-        if longest_dimension < 500:
+        if longest_dimension < max(target_width, target_height):
             size = (longest_dimension, longest_dimension)
 
-        # Otherwise, crop the square to 500px
+        # Otherwise, crop the square to target size
         else:
-            size = (500, 500)
+            size = (target_width, target_height)
 
-        image_file.thumbnail(size, Image.ANTIALIAS)
+        # Makes a transparent background and pastes game image over the centre
+        img.thumbnail(size, Image.ANTIALIAS)
         background = Image.new('RGBA', size, (255, 255, 255, 0))
         background.paste(
-            image_file, (int((size[0] - image_file.size[0]) / 2),
-                         int((size[1] - image_file.size[1]) / 2))
+            img, (int((size[0] - img.size[0]) / 2),
+                  int((size[1] - img.size[1]) / 2))
         )
-        makedirs("resized_images", exist_ok=True)
-        background.save("resized_images/" + image_name + ".png")
 
-    print("\nFinished. Your images should be in a folder called 'resized_images' now.\n")
+        img_file = Path(img_file)
+        if img_file.suffix != output_format:
+            background.save(images_directory + img_file.stem + output_format)
+        else:
+            background.save(images_directory + str(img_file))
+
+    print("Finished")
 
 
-if __name__ == "__main__":
-    all_images = collect_all_images()
-    resize_images(all_images)
+resize_images()
