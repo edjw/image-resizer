@@ -54,6 +54,7 @@ def resize_images(img_files, output_width=500, output_height=500, output_format=
 
         # If longest dimension is less than target width (default 500px)
         # Make a square of largest side
+        # There's a bug in here!
         if longest_dimension < max(output_width, output_height):
             size = (longest_dimension, longest_dimension)
 
